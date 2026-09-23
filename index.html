@@ -285,20 +285,7 @@ input[type=datetime-local]{color-scheme:dark}
 (function(){
   var $ = function(s){return document.querySelector(s);};
   var EXTERNAL_EXEC_URL = window.DINK_EXEC_URL && String(window.DINK_EXEC_URL).trim();
-  /**
-   * Calls a server function. Two modes:
-   *  - Hosted externally (e.g. Cloudflare Pages): window.DINK_EXEC_URL is set to the real
-   *    deployed /exec URL, and we call it with fetch(). Apps Script can't answer a CORS
-   *    preflight, so the request uses Content-Type: text/plain, which browsers treat as a
-   *    "simple request" and never preflight.
-   *  - Hosted by Apps Script itself: DO NOT use fetch() with a URL read from this page's own
-   *    location.href. Apps Script serves this page inside a nested sandbox iframe (that's the
-   *    mechanism behind the "created by a Google Apps Script user" bar), so location.href here
-   *    is a script.googleusercontent.com content-cache address, not the /exec URL — posting to
-   *    it just echoes the page's own HTML back, which is the "Unexpected token '<'" error.
-   *    google.script.run is Google's purpose-built bridge for exactly this situation and is
-   *    unaffected by that URL problem, so it's used instead.
-   */
+  
   function callServer(fn, args){
     args = args || [];
     if (EXTERNAL_EXEC_URL) {
