@@ -70,10 +70,7 @@ dt{color:var(--muted);font-size:15px}dd{margin:0;font-weight:700;text-align:righ
 (function(){
   var $=function(s){return document.querySelector(s);};
   var EXTERNAL_EXEC_URL = window.DINK_EXEC_URL && String(window.DINK_EXEC_URL).trim();
-  /** See the matching comment in Index.html: google.script.run is used when this page is
-   *  hosted by Apps Script itself, since location.href inside Apps Script's sandbox iframe
-   *  is not the real /exec URL. fetch() is used only for an externally hosted copy, where
-   *  window.DINK_EXEC_URL is a real, known address. */
+  
   function callServer(fn, args){
     args = args || [];
     if (EXTERNAL_EXEC_URL) {
