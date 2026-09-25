@@ -5,6 +5,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Registration · Dink Happens 1.0</title>
+<link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
+<link rel="manifest" href="/favicon/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,700;1,800;1,900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -60,6 +64,9 @@ input:focus{border-color:var(--volt)}
 input[readonly]{opacity:.7;border-style:dashed}
 input[type=datetime-local]{color-scheme:dark}
 .hint{margin:6px 2px 0;font-size:13.5px;color:var(--muted)}
+.addr-warn{margin:6px 2px 0;font-size:13.5px;color:var(--orange);font-weight:600;display:none}
+.addr-warn.show{display:block}
+input.addr-bad{border-color:var(--orange)}
 
 /* player cards */
 .pcard{padding:18px 16px;border:2px solid var(--line);border-left-width:8px;border-radius:14px;background:rgba(14,29,87,.7)}
@@ -94,8 +101,7 @@ input[type=datetime-local]{color-scheme:dark}
 @media(prefers-reduced-motion:reduce){.card{transition:none}.cat input:checked~.card{transform:none}}
 
 #subBox{margin-top:22px;display:none}
-.bais{display:none;align-items:flex-start;gap:12px;margin-top:16px;padding:12px 14px;border:2px solid var(--orange);border-radius:10px;background:rgba(255,159,26,.08);font-size:15px;cursor:pointer}
-.bais input{width:22px;height:22px;flex:none;margin-top:2px;accent-color:var(--orange)}
+.bais{display:none;align-items:flex-start;gap:12px;margin-top:16px;padding:12px 14px;border:2px solid var(--orange);border-radius:10px;background:rgba(255,159,26,.08);font-size:15px}
 
 /* registration summary */
 .summary{margin-top:20px;padding:16px;border:2px dashed var(--volt);border-radius:14px;background:rgba(221,255,26,.06)}
@@ -177,7 +183,7 @@ input[type=datetime-local]{color-scheme:dark}
     <div id="subBox">
       <div class="f-label" id="subLabel">Subcategory</div>
       <div class="seg" id="subs" role="radiogroup" aria-labelledby="subLabel"></div>
-      <label class="bais" id="baisRow"><input type="checkbox" id="bais"><span><b>Bais City players only.</b> We confirm that both Player 1 and Player 2 are Bais City players.</span></label>
+      <div class="bais" id="baisRow"><span><b>Bais City players only.</b> This category is exclusive to Bais City players. Make sure both players' addresses below show Bais City — we check this automatically before you can submit.</span></div>
     </div>
 
     <div class="summary" aria-live="polite">
@@ -279,7 +285,7 @@ input[type=datetime-local]{color-scheme:dark}
 
 
 <script>
-  window.DINK_EXEC_URL = "https://script.google.com/macros/s/AKfycbyuO-uGMzaRbgKOT1_s-4Mi_qMZiMA5pQop5Dm9sFqfU5dHsrH0dqRiXCfkWYiRHxwL/exec"; 
+  window.DINK_EXEC_URL = "https://script.google.com/macros/s/AKfycbyuO-uGMzaRbgKOT1_s-4Mi_qMZiMA5pQop5Dm9sFqfU5dHsrH0dqRiXCfkWYiRHxwL/exec";
 </script>
 <script>
 (function(){
@@ -337,8 +343,34 @@ input[type=datetime-local]{color-scheme:dark}
       if(f.im) inp.setAttribute('inputmode',f.im);
       w.appendChild(lab); w.appendChild(inp);
       if(f.hint){ var h=document.createElement('p'); h.className='hint'; h.textContent=f.hint; w.appendChild(h); }
+      if(f.k==='address'){
+        var warn=document.createElement('p'); warn.className='addr-warn'; warn.id='p'+n+'-addr-warn';
+        warn.textContent="This doesn't look like a Bais City address. Newbies and Beginners are exclusive to Bais City players.";
+        w.appendChild(warn);
+        inp.addEventListener('input',checkAddresses);
+      }
       box.appendChild(w);
     });
+  }
+
+  /** Same rule as the server's addressLooksLikeBaisCity_(): 
+   *  "Bais", not a verified geocode. It's a first-pass filter; the server has the final say. */
+  function looksLikeBais(addr){ return /\bbais\b/i.test(addr||''); }
+
+  function checkAddresses(){
+    if(!cat || !cat.bais){
+      ['#p1','#p2'].forEach(function(p){ $(p+'-addr-warn').classList.remove('show'); $(p+'-address').classList.remove('addr-bad'); });
+      return { p1:true, p2:true };
+    }
+    var out={};
+    ['p1','p2'].forEach(function(p){
+      var input=$('#'+p+'-address'), warn=$('#'+p+'-addr-warn');
+      var val=input.value.trim(); var ok = val.length===0 || looksLikeBais(val); // don't warn on an empty, not-yet-filled field
+      out[p]=val.length>0 && looksLikeBais(val);
+      warn.classList.toggle('show', val.length>0 && !ok);
+      input.classList.toggle('addr-bad', val.length>0 && !ok);
+    });
+    return out;
   }
 
   function init(cfg){
@@ -382,8 +414,9 @@ input[type=datetime-local]{color-scheme:dark}
       if(c.subs.length===1){ r.checked=true; sub=s; }
     });
     $('#subBox').style.display='block';
-    var b=$('#bais'); $('#baisRow').style.display=c.bais?'flex':'none'; b.required=!!c.bais; if(!c.bais) b.checked=false;
+    $('#baisRow').style.display=c.bais?'flex':'none';
     if(!amtTouched){ $('#payAmt').value=teamTotal(c); }
+    checkAddresses();
     renderSummary();
   }
 
@@ -404,6 +437,7 @@ input[type=datetime-local]{color-scheme:dark}
   function syncAddr(){
     var on=$('#sameAddr').checked, a2=$('#p2-address');
     a2.readOnly=on; if(on) a2.value=$('#p1-address').value;
+    checkAddresses();
   }
   function payers(){
     var dl=$('#payers'); dl.textContent='';
@@ -450,11 +484,20 @@ input[type=datetime-local]{color-scheme:dark}
     if(!cat){ showErr('Pick a tournament category first.'); $('#cats').scrollIntoView({behavior:'smooth',block:'center'}); return; }
     if(!sub){ showErr('Pick a subcategory for '+cat.name+'.'); $('#subBox').scrollIntoView({behavior:'smooth',block:'center'}); return; }
     if(!this.reportValidity()) return;
+    if(cat.bais){
+      var addrOk=checkAddresses();
+      if(!addrOk.p1 && !addrOk.p2){
+        showErr(cat.name+' is exclusive to Bais City players. Player 1 and Player 2\'s addresses do not show Bais City. Please double-check both addresses, or choose a different category.');
+        $('#p1-address').scrollIntoView({behavior:'smooth',block:'center'}); return;
+      }
+      if(!addrOk.p1){ showErr(cat.name+' is exclusive to Bais City players. Player 1\'s address does not show Bais City. Please double-check the address, or choose a different category.'); $('#p1-address').scrollIntoView({behavior:'smooth',block:'center'}); return; }
+      if(!addrOk.p2){ showErr(cat.name+' is exclusive to Bais City players. Player 2\'s address does not show Bais City. Please double-check the address, or choose a different category.'); $('#p2-address').scrollIntoView({behavior:'smooth',block:'center'}); return; }
+    }
     if(!$('#consent').checked){ showErr('Please tick the box to agree to how your details will be used.'); return; }
     if(CFG.requireReceipt && !receipt){ showErr('Please upload a screenshot of your payment receipt.'); return; }
     var p1=player(1), p2=player(2);
     var payload={
-      category:cat.name, subcategory:sub, baisConfirm:$('#bais').checked, p1:p1, p2:p2,
+      category:cat.name, subcategory:sub, p1:p1, p2:p2,
       payRef:$('#payRef').value, payAt:$('#payAt').value, payAmt:$('#payAmt').value, payer:$('#payer').value,
       consent:true, website:$('#website').value, receipt:receipt
     };
